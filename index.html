@@ -43,7 +43,8 @@
                     <div id="calc-input-group" class="flex items-center space-x-2 mb-2">
                         <input type="number" id="totalAmount" placeholder="총 결제 금액 (선택)" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                         <span class="text-gray-500">÷</span>
-                        <input type="number" id="numPeople" placeholder="인원수 (선택)" class="w-24 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                        <!-- 여기서 w-24를 flex-1로 변경하여 유연하게 만듦 -->
+                        <input type="number" id="numPeople" placeholder="인원수 (선택)" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                         <button id="calculateBtn" class="bg-indigo-500 text-white p-3 rounded-lg hover:bg-indigo-600 transition duration-150">계산</button>
                     </div>
                     <p id="calc-result" class="text-sm text-gray-600 h-5"></p>
