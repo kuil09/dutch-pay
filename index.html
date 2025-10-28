@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>정산 링크 생성기</title>
+    <!-- OGP 태그 시작 (링크 미리보기용) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" id="ogUrl" content="[OGP URL 기본값]">
+    <meta property="og:title" id="ogTitle" content="[OGP 타이틀 기본값]">
+    <meta property="og:description" id="ogDescription" content="[OGP 설명 기본값]">
+    <!-- OGP 태그 종료 -->
+
     <!-- Tailwind CSS CDN 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- QR Code Library CDN 로드 (qrcode.js 사용) -->
@@ -163,7 +170,7 @@
     </div>
 
     <script>
-        // 전역 변수 설정 (Firebase 대신 정적 웹페이지이므로 URL 파라미터 사용)
+        // 전역 변수 설정
         const amountInput = document.getElementById('amountPerPerson');
         const bankInput = document.getElementById('bankName');
         const accountInput = document.getElementById('accountNumber');
@@ -178,12 +185,18 @@
         const resultSection = document.getElementById('result-display-section');
         const generatedLinkInput = document.getElementById('generatedLink');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
-        const qrcodeContainer = document.getElementById('qrcode-container'); // QR 코드 컨테이너 변수 추가
+        const qrcodeContainer = document.getElementById('qrcode-container');
         
         // 정산 요청 페이지의 복사 대상 요소
         const copyBankElement = document.getElementById('copyBank');
         const copyAccountElement = document.getElementById('copyAccount');
         const copyHolderElement = document.getElementById('copyHolder');
+
+        // OGP 관련 메타 태그 요소
+        const ogUrl = document.getElementById('ogUrl');
+        const ogTitle = document.getElementById('ogTitle');
+        const ogDescription = document.getElementById('ogDescription');
+
 
         /**
          * 숫자를 한국 통화 형식으로 포맷합니다.
@@ -222,7 +235,7 @@
                 // 1. 메시지 오버레이 생성
                 const messageOverlay = document.createElement('div');
                 messageOverlay.textContent = '✅ 복사 완료!';
-                messageOverlay.classList.add('copy-message-overlay'); // 새로운 CSS 클래스 사용
+                messageOverlay.classList.add('copy-message-overlay'); // CSS 클래스 사용
 
                 // 2. 오버레이 추가 및 배경색 변경 (copy-success 클래스 사용)
                 element.classList.add('copy-success');
@@ -231,7 +244,9 @@
                 // 3. 1초 후 오버레이 제거 및 클래스 복구
                 setTimeout(() => {
                     element.classList.remove('copy-success');
-                    element.removeChild(messageOverlay);
+                    if (element.contains(messageOverlay)) {
+                        element.removeChild(messageOverlay);
+                    }
                 }, 1000);
 
             } else {
@@ -317,6 +332,9 @@
             generatedLinkInput.value = generatedUrl;
             document.getElementById('link-output-area').classList.remove('hidden');
 
+            // --- OGP 태그 동적 업데이트 (링크 생성 시점에서는 사용자가 페이지에 머물러 있지만, 공유되는 URL에 반영) ---
+            updateOGPMeta(amount, bank, holder, generatedUrl);
+
             // --- QR 코드 생성 로직 ---
             qrcodeContainer.innerHTML = ''; // 기존 QR 코드 삭제
 
@@ -335,13 +353,31 @@
         });
 
         /**
+         * OGP 메타 태그의 내용을 동적으로 업데이트합니다.
+         * (주의: 공유 플랫폼의 크롤러는 JS 실행 전 정적 HTML을 읽으므로 완벽하게 작동하지 않을 수 있습니다.)
+         */
+        function updateOGPMeta(amount, bank, holder, url) {
+            const formattedAmount = formatCurrency(parseInt(amount));
+            
+            // Title: [예금주] 님께 [금액] 송금 요청
+            ogTitle.setAttribute('content', `${decodeURIComponent(holder)}님께 ${formattedAmount} 송금 요청`);
+            
+            // Description: [은행명] [계좌번호] 확인
+            ogDescription.setAttribute('content', `은행: ${decodeURIComponent(bank)}, 계좌: ${accountInput.value.trim()}. 지금 바로 송금하세요!`);
+            
+            // URL
+            ogUrl.setAttribute('content', url);
+        }
+
+
+        /**
          * 생성된 링크를 클립보드에 복사합니다.
          */
         copyLinkBtn.addEventListener('click', () => {
             // generatedLinkInput의 값 복사
             copyToClipboard(generatedLinkInput.value, generatedLinkInput);
 
-            // 복사 성공 시 버튼 텍스트 변경 피드백 (GeneratedLinkInput의 스타일을 따르지 않고 버튼 자체에만 적용)
+            // 복사 성공 시 버튼 텍스트 변경 피드백 
             copyLinkBtn.textContent = '✅ 복사 완료!';
             copyLinkBtn.classList.add('bg-green-500', 'hover:bg-green-500');
             copyLinkBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
@@ -364,6 +400,11 @@
             const account = urlParams.get('c');
             const holder = urlParams.get('d');
 
+            // --- OGP 태그 업데이트 (페이지가 파라미터와 함께 로드될 때) ---
+            if (amount && bank && holder) {
+                 updateOGPMeta(amount, bank, holder, window.location.href);
+            }
+            
             if (amount && bank && account && holder) {
                 // 데이터가 있을 경우: 결과 표시 섹션 활성화
                 inputSection.classList.add('hidden');
