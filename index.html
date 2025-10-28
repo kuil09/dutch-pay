@@ -21,6 +21,7 @@
         /* Custom style for the copy success effect */
         .copy-success {
             transition: background-color 0.3s ease-in-out;
+            background-color: #d1fae5 !important; /* Tailwind green-100 */
         }
     </style>
 </head>
@@ -108,7 +109,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <h2 class="text-3xl font-bold text-gray-800 mt-4">정산 요청</h2>
-            <p class="text-lg text-gray-600 mt-2 mb-8">아래 계좌로 금액을 송금해 주세요.</p>
+            <p class="text-lg text-gray-600 mt-2 mb-8">아래 계좌로 금액을 송금해 주세요. (터치 시 정보가 복사됩니다!)</p>
 
             <div class="space-y-4 p-6 bg-green-50 rounded-xl border-4 border-green-300 shadow-lg">
                 <div class="text-left">
@@ -117,15 +118,18 @@
                 </div>
                 
                 <div class="border-t border-green-200 pt-4 space-y-2 text-left">
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                    <!-- 은행명 복사 가능하도록 수정 -->
+                    <div id="copyBank" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
                         <span class="font-medium text-gray-500">은행명</span>
                         <span id="displayBank" class="font-semibold text-gray-800"></span>
                     </div>
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                    <!-- 계좌번호 복사 가능하도록 수정 -->
+                    <div id="copyAccount" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
                         <span class="font-medium text-gray-500">계좌번호</span>
                         <span id="displayAccount" class="font-semibold text-gray-800"></span>
                     </div>
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                    <!-- 예금주 복사 가능하도록 수정 -->
+                    <div id="copyHolder" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
                         <span class="font-medium text-gray-500">예금주</span>
                         <span id="displayHolder" class="font-semibold text-gray-800"></span>
                     </div>
@@ -158,6 +162,11 @@
         const generatedLinkInput = document.getElementById('generatedLink');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
         const qrcodeContainer = document.getElementById('qrcode-container'); // QR 코드 컨테이너 변수 추가
+        
+        // 정산 요청 페이지의 복사 대상 요소
+        const copyBankElement = document.getElementById('copyBank');
+        const copyAccountElement = document.getElementById('copyAccount');
+        const copyHolderElement = document.getElementById('copyHolder');
 
         /**
          * 숫자를 한국 통화 형식으로 포맷합니다.
@@ -170,6 +179,44 @@
                 minimumFractionDigits: 0
             }).format(number);
         };
+
+        /**
+         * 클립보드에 텍스트를 복사하고 시각적 피드백을 제공합니다.
+         * @param {string} textToCopy 복사할 텍스트
+         * @param {HTMLElement} element 복사 성공 시 스타일을 적용할 HTML 요소
+         */
+        function copyToClipboard(textToCopy, element) {
+            // 임시 input 요소를 생성하여 복사 작업을 수행
+            const tempInput = document.createElement('input');
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            
+            let successful = false;
+            try {
+                successful = document.execCommand('copy');
+            } catch (err) {
+                console.error('클립보드 복사 오류:', err);
+            }
+            
+            document.body.removeChild(tempInput);
+
+            if (successful) {
+                // 복사 성공 시 시각적 피드백
+                element.classList.add('copy-success');
+                element.style.borderColor = '#34d399'; // green-400
+                
+                // 1초 후 원래 스타일로 복구
+                setTimeout(() => {
+                    element.classList.remove('copy-success');
+                    element.style.borderColor = ''; // 원래 스타일로 복구
+                }, 1000);
+
+                // console.log(`'${textToCopy}' 복사 완료.`);
+            } else {
+                console.error('복사 명령 실패.');
+            }
+        }
 
         /**
          * 총 금액과 인원수를 기반으로 인당 송금액을 계산합니다.
@@ -270,27 +317,18 @@
          * 생성된 링크를 클립보드에 복사합니다.
          */
         copyLinkBtn.addEventListener('click', () => {
-            generatedLinkInput.select();
-            // navigator.clipboard.writeText(generatedLinkInput.value)를 iFrame 환경에서 사용하기 어렵기 때문에 구식 방법을 사용합니다.
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    // 복사 성공 시 버튼 스타일 변경
-                    copyLinkBtn.textContent = '✅ 복사 완료!';
-                    copyLinkBtn.classList.add('bg-green-500', 'hover:bg-green-500');
-                    copyLinkBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
-                    setTimeout(() => {
-                        copyLinkBtn.textContent = '복사';
-                        copyLinkBtn.classList.remove('bg-green-500', 'hover:bg-green-500');
-                        copyLinkBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-                    }, 1500);
-                } else {
-                    console.error('복사 명령 실패');
-                }
-            } catch (err) {
-                console.error('클립보드 복사 오류:', err);
-                // 커스텀 알림 UI를 사용해야 하지만, 여기서는 임시로 콘솔 메시지로 대체
-            }
+            // generatedLinkInput의 값 복사
+            copyToClipboard(generatedLinkInput.value, generatedLinkInput);
+
+            // 복사 성공 시 버튼 텍스트 변경 피드백 (GeneratedLinkInput의 스타일을 따르지 않고 버튼 자체에만 적용)
+            copyLinkBtn.textContent = '✅ 복사 완료!';
+            copyLinkBtn.classList.add('bg-green-500', 'hover:bg-green-500');
+            copyLinkBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+            setTimeout(() => {
+                copyLinkBtn.textContent = '복사';
+                copyLinkBtn.classList.remove('bg-green-500', 'hover:bg-green-500');
+                copyLinkBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            }, 1500);
         });
 
         /**
@@ -309,11 +347,34 @@
                 // 데이터가 있을 경우: 결과 표시 섹션 활성화
                 inputSection.classList.add('hidden');
                 resultSection.classList.remove('hidden');
+                
+                // 복원된 데이터
+                const decodedBank = decodeURIComponent(bank);
+                const decodedAccount = decodeURIComponent(account);
+                const decodedHolder = decodeURIComponent(holder);
 
                 document.getElementById('displayAmount').textContent = formatCurrency(parseInt(amount));
-                document.getElementById('displayBank').textContent = decodeURIComponent(bank);
-                document.getElementById('displayAccount').textContent = decodeURIComponent(account);
-                document.getElementById('displayHolder').textContent = decodeURIComponent(holder);
+                document.getElementById('displayBank').textContent = decodedBank;
+                document.getElementById('displayAccount').textContent = decodedAccount;
+                document.getElementById('displayHolder').textContent = decodedHolder;
+
+                // --- 정산 요청 페이지 복사 이벤트 리스너 추가 ---
+                
+                // 은행명 복사
+                copyBankElement.addEventListener('click', () => {
+                    copyToClipboard(decodedBank, copyBankElement);
+                });
+                
+                // 계좌번호 복사
+                copyAccountElement.addEventListener('click', () => {
+                    copyToClipboard(decodedAccount, copyAccountElement);
+                });
+
+                // 예금주 복사
+                copyHolderElement.addEventListener('click', () => {
+                    copyToClipboard(decodedHolder, copyHolderElement);
+                });
+                // ------------------------------------------
 
             } else {
                 // 데이터가 없을 경우: 입력 폼 섹션 활성화
