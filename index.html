@@ -18,10 +18,27 @@
             align-items: center;
             justify-content: center;
         }
-        /* Custom style for the copy success effect */
+        /* Custom style for the subtle background change on copy success */
         .copy-success {
             transition: background-color 0.3s ease-in-out;
             background-color: #d1fae5 !important; /* Tailwind green-100 */
+        }
+        /* Style for the copy message overlay */
+        .copy-message-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(209, 250, 229, 0.95); /* green-100 with opacity */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 1.125rem; /* text-xl */
+            font-weight: 700; /* font-bold */
+            color: #065f46; /* green-700 */
+            z-index: 10;
         }
     </style>
 </head>
@@ -118,18 +135,18 @@
                 </div>
                 
                 <div class="border-t border-green-200 pt-4 space-y-2 text-left">
-                    <!-- 은행명 복사 가능하도록 수정 -->
-                    <div id="copyBank" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
+                    <!-- 은행명 복사 가능하도록 수정 (relative 추가) -->
+                    <div id="copyBank" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100 relative">
                         <span class="font-medium text-gray-500">은행명</span>
                         <span id="displayBank" class="font-semibold text-gray-800"></span>
                     </div>
-                    <!-- 계좌번호 복사 가능하도록 수정 -->
-                    <div id="copyAccount" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
+                    <!-- 계좌번호 복사 가능하도록 수정 (relative 추가) -->
+                    <div id="copyAccount" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100 relative">
                         <span class="font-medium text-gray-500">계좌번호</span>
                         <span id="displayAccount" class="font-semibold text-gray-800"></span>
                     </div>
-                    <!-- 예금주 복사 가능하도록 수정 -->
-                    <div id="copyHolder" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100">
+                    <!-- 예금주 복사 가능하도록 수정 (relative 추가) -->
+                    <div id="copyHolder" class="flex justify-between items-center bg-white p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-100 relative">
                         <span class="font-medium text-gray-500">예금주</span>
                         <span id="displayHolder" class="font-semibold text-gray-800"></span>
                     </div>
@@ -183,7 +200,7 @@
         /**
          * 클립보드에 텍스트를 복사하고 시각적 피드백을 제공합니다.
          * @param {string} textToCopy 복사할 텍스트
-         * @param {HTMLElement} element 복사 성공 시 스타일을 적용할 HTML 요소
+         * @param {HTMLElement} element 복사 성공 시 스타일을 적용할 HTML 요소 (복사 대상 div)
          */
         function copyToClipboard(textToCopy, element) {
             // 임시 input 요소를 생성하여 복사 작업을 수행
@@ -202,17 +219,21 @@
             document.body.removeChild(tempInput);
 
             if (successful) {
-                // 복사 성공 시 시각적 피드백
+                // 1. 메시지 오버레이 생성
+                const messageOverlay = document.createElement('div');
+                messageOverlay.textContent = '✅ 복사 완료!';
+                messageOverlay.classList.add('copy-message-overlay'); // 새로운 CSS 클래스 사용
+
+                // 2. 오버레이 추가 및 배경색 변경 (copy-success 클래스 사용)
                 element.classList.add('copy-success');
-                element.style.borderColor = '#34d399'; // green-400
-                
-                // 1초 후 원래 스타일로 복구
+                element.appendChild(messageOverlay);
+
+                // 3. 1초 후 오버레이 제거 및 클래스 복구
                 setTimeout(() => {
                     element.classList.remove('copy-success');
-                    element.style.borderColor = ''; // 원래 스타일로 복구
+                    element.removeChild(messageOverlay);
                 }, 1000);
 
-                // console.log(`'${textToCopy}' 복사 완료.`);
             } else {
                 console.error('복사 명령 실패.');
             }
