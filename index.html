@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정산 링크 생성기</title>
+    <!-- Tailwind CSS CDN 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Library CDN 로드 (qrcode.js 사용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Custom style for the copy success effect */
+        .copy-success {
+            transition: background-color 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- 메인 컨테이너 -->
+    <div id="app-container" class="w-full max-w-lg bg-white shadow-xl rounded-xl p-6 md:p-8">
+        <h1 class="text-3xl font-extrabold text-center text-indigo-700 mb-6">정산 링크 생성 및 공유</h1>
+
+        <!-- 1. 입력 폼 (URL 파라미터가 없을 때 표시) -->
+        <div id="input-form-section">
+            <div class="space-y-4">
+                <p class="text-sm text-gray-500 mb-6 text-center">
+                    정산 정보를 입력하고 링크를 생성하세요. 이 링크를 QR 코드로 만들어 공유할 수 있습니다.
+                </p>
+
+                <!-- 1.1. 금액 계산/입력 -->
+                <div id="amount-input-group" class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <label for="totalAmount" class="block text-lg font-semibold text-indigo-700 mb-1">총 금액 / 인당 금액 설정</label>
+                    <div id="calc-input-group" class="flex items-center space-x-2 mb-2">
+                        <input type="number" id="totalAmount" placeholder="총 결제 금액 (선택)" class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                        <span class="text-gray-500">÷</span>
+                        <input type="number" id="numPeople" placeholder="인원수 (선택)" class="w-24 p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                        <button id="calculateBtn" class="bg-indigo-500 text-white p-3 rounded-lg hover:bg-indigo-600 transition duration-150">계산</button>
+                    </div>
+                    <p id="calc-result" class="text-sm text-gray-600 h-5"></p>
+                    
+                    <label for="amountPerPerson" class="block text-sm font-medium text-gray-700 mt-4 mb-1">
+                        ✨ 인당 송금액 (필수)
+                    </label>
+                    <input type="number" id="amountPerPerson" required placeholder="예: 15000" class="w-full p-3 border-2 border-indigo-400 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 font-bold text-xl">
+                </div>
+
+                <!-- 1.2. 계좌 정보 -->
+                <div>
+                    <label for="bankName" class="block text-sm font-medium text-gray-700 mb-1">은행명 (필수)</label>
+                    <input type="text" id="bankName" required placeholder="예: 카카오뱅크, 국민은행" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label for="accountNumber" class="block text-sm font-medium text-gray-700 mb-1">계좌번호 (필수)</label>
+                    <input type="text" id="accountNumber" required placeholder="숫자만 입력해 주세요" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label for="accountHolder" class="block text-sm font-medium text-gray-700 mb-1">예금주 (필수)</label>
+                    <input type="text" id="accountHolder" required placeholder="예: 홍길동" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <button id="generateBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition duration-150 shadow-md">
+                    정산 링크 생성하기
+                </button>
+            </div>
+            
+            <!-- 생성된 링크 표시 영역 -->
+            <div id="link-output-area" class="mt-8 p-4 bg-gray-100 rounded-lg hidden">
+                <p class="font-semibold text-gray-700 mb-2">✅ 공유할 정산 링크가 생성되었습니다:</p>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="generatedLink" readonly class="flex-1 p-3 border border-gray-300 rounded-lg bg-white text-sm truncate">
+                    <button id="copyLinkBtn" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition duration-150 whitespace-nowrap">
+                        복사
+                    </button>
+                </div>
+
+                <!-- QR 코드 출력 영역 추가 -->
+                <div class="mt-4 p-4 bg-white rounded-lg shadow-inner flex justify-center flex-col items-center">
+                    <p class="font-bold text-gray-700 mb-3">📸 QR 코드로 바로 스캔하세요</p>
+                    <div id="qrcode-container" class="p-2 border border-gray-300 rounded-lg bg-white">
+                        <!-- QR 코드가 여기에 생성됩니다 -->
+                    </div>
+                </div>
+
+                <p class="text-xs text-red-500 mt-2">
+                    * 이 링크를 QR 코드로 변환하여 사용하거나 메시지로 공유하세요.
+                </p>
+            </div>
+        </div>
+
+        <!-- 2. 결과 표시 (URL 파라미터가 있을 때 표시) -->
+        <div id="result-display-section" class="hidden text-center">
+            <svg class="mx-auto h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3 .895-3 2 1.343 2 3 2m0-8v2m0 4v2m-6-4h2m4 0h2m0-4h2m-4-2v2m0-4v2m0 10v2m0 0h2m-4 0h2m-4-2h2m-4 0h2m-4-2v2m0-4h2m-4 0h2" />
+            </svg>
+            <h2 class="text-3xl font-bold text-gray-800 mt-4">💰 정산 요청</h2>
+            <p class="text-lg text-gray-600 mt-2 mb-8">아래 계좌로 금액을 송금해 주세요.</p>
+
+            <div class="space-y-4 p-6 bg-green-50 rounded-xl border-4 border-green-300 shadow-lg">
+                <div class="text-left">
+                    <p class="text-2xl font-bold text-green-700">송금할 금액</p>
+                    <p id="displayAmount" class="text-5xl font-extrabold text-green-900 mt-1">0원</p>
+                </div>
+                
+                <div class="border-t border-green-200 pt-4 space-y-2 text-left">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                        <span class="font-medium text-gray-500">은행명</span>
+                        <span id="displayBank" class="font-semibold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                        <span class="font-medium text-gray-500">계좌번호</span>
+                        <span id="displayAccount" class="font-semibold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                        <span class="font-medium text-gray-500">예금주</span>
+                        <span id="displayHolder" class="font-semibold text-gray-800"></span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-500 mt-6">
+                페이지가 다시 필요하면 이 링크를 북마크하거나 저장하세요.
+            </p>
+            <button onclick="window.location.href = window.location.pathname" class="mt-4 text-indigo-600 hover:text-indigo-800 font-medium">
+                새로운 링크 생성하기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수 설정 (Firebase 대신 정적 웹페이지이므로 URL 파라미터 사용)
+        const amountInput = document.getElementById('amountPerPerson');
+        const bankInput = document.getElementById('bankName');
+        const accountInput = document.getElementById('accountNumber');
+        const holderInput = document.getElementById('accountHolder');
+        const generateBtn = document.getElementById('generateBtn');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const totalAmountInput = document.getElementById('totalAmount');
+        const numPeopleInput = document.getElementById('numPeople');
+        const calcResult = document.getElementById('calc-result');
+
+        const inputSection = document.getElementById('input-form-section');
+        const resultSection = document.getElementById('result-display-section');
+        const generatedLinkInput = document.getElementById('generatedLink');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const qrcodeContainer = document.getElementById('qrcode-container'); // QR 코드 컨테이너 변수 추가
+
+        /**
+         * 숫자를 한국 통화 형식으로 포맷합니다.
+         * @param {number} number
+         */
+        const formatCurrency = (number) => {
+            return new Intl.NumberFormat('ko-KR', {
+                style: 'currency',
+                currency: 'KRW',
+                minimumFractionDigits: 0
+            }).format(number);
+        };
+
+        /**
+         * 총 금액과 인원수를 기반으로 인당 송금액을 계산합니다.
+         */
+        calculateBtn.addEventListener('click', () => {
+            const total = parseInt(totalAmountInput.value);
+            const num = parseInt(numPeopleInput.value);
+
+            if (isNaN(total) || isNaN(num) || num <= 0) {
+                // 커스텀 알림 UI를 사용해야 하지만, 여기서는 임시로 콘솔 메시지로 대체
+                console.error('총 금액과 인원수를 정확히 입력해 주세요.');
+                calcResult.textContent = '총 금액과 인원수를 정확히 입력해 주세요.';
+                return;
+            }
+
+            const perPerson = Math.ceil(total / num); // 올림 처리하여 계산
+            amountInput.value = perPerson;
+            calcResult.textContent = `계산 결과: 인당 ${formatCurrency(perPerson)} (${total} ÷ ${num})`;
+        });
+
+        /**
+         * 입력 필드를 비활성화하고 관련 버튼을 숨깁니다.
+         */
+        function disableInputFields() {
+            // 1. 필수 입력 필드를 읽기 전용으로 설정 및 스타일 변경
+            const primaryInputs = [amountInput, bankInput, accountInput, holderInput];
+            
+            primaryInputs.forEach(input => {
+                input.setAttribute('readonly', true);
+                // 읽기 전용 상태를 명확히 보여주기 위해 스타일 변경
+                input.classList.add('bg-gray-100', 'text-gray-700', 'cursor-default');
+                input.classList.remove('focus:ring-indigo-500', 'focus:border-indigo-500', 'border-indigo-400');
+            });
+            
+            // 2. 계산 관련 필드/버튼 숨기기
+            const calcInputGroup = document.getElementById('calc-input-group');
+            if (calcInputGroup) {
+                calcInputGroup.classList.add('hidden');
+            }
+            calcResult.classList.add('hidden');
+            
+            // 3. 정산 링크 생성하기 버튼 숨기기
+            generateBtn.classList.add('hidden');
+        }
+
+        /**
+         * 입력된 정보를 URL 파라미터로 인코딩하여 링크를 생성합니다.
+         */
+        generateBtn.addEventListener('click', () => {
+            const amount = amountInput.value.trim();
+            const bank = bankInput.value.trim();
+            const account = accountInput.value.trim();
+            const holder = holderInput.value.trim();
+
+            if (!amount || !bank || !account || !holder) {
+                // 커스텀 알림 UI를 사용해야 하지만, 여기서는 임시로 콘솔 메시지로 대체
+                console.error('모든 필수 정보를 입력해 주세요.');
+                return;
+            }
+
+            if (isNaN(parseInt(amount))) {
+                // 커스텀 알림 UI를 사용해야 하지만, 여기서는 임시로 콘솔 메시지로 대체
+                console.error('송금액은 숫자여야 합니다.');
+                return;
+            }
+
+            // URL 파라미터에 들어갈 데이터를 정의 (간결한 파라미터 이름 사용)
+            const params = new URLSearchParams();
+            params.append('a', amount); // Amount
+            params.append('b', bank);   // Bank Name
+            params.append('c', account);// Account Number
+            params.append('d', holder); // Account Holder
+
+            // 현재 URL의 경로 + 쿼리 스트링으로 링크 생성
+            const generatedUrl = window.location.origin + window.location.pathname + '?' + params.toString();
+            
+            generatedLinkInput.value = generatedUrl;
+            document.getElementById('link-output-area').classList.remove('hidden');
+
+            // --- QR 코드 생성 로직 ---
+            qrcodeContainer.innerHTML = ''; // 기존 QR 코드 삭제
+
+            new QRCode(qrcodeContainer, {
+                text: generatedUrl,
+                width: 180,
+                height: 180,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H // 높은 에러 보정 레벨
+            });
+            // ------------------------
+
+            // --- 새로 추가된 기능: 입력 필드 비활성화 및 버튼 숨기기 ---
+            disableInputFields(); 
+        });
+
+        /**
+         * 생성된 링크를 클립보드에 복사합니다.
+         */
+        copyLinkBtn.addEventListener('click', () => {
+            generatedLinkInput.select();
+            // navigator.clipboard.writeText(generatedLinkInput.value)를 iFrame 환경에서 사용하기 어렵기 때문에 구식 방법을 사용합니다.
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    // 복사 성공 시 버튼 스타일 변경
+                    copyLinkBtn.textContent = '✅ 복사 완료!';
+                    copyLinkBtn.classList.add('bg-green-500', 'hover:bg-green-500');
+                    copyLinkBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    setTimeout(() => {
+                        copyLinkBtn.textContent = '복사';
+                        copyLinkBtn.classList.remove('bg-green-500', 'hover:bg-green-500');
+                        copyLinkBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                    }, 1500);
+                } else {
+                    console.error('복사 명령 실패');
+                }
+            } catch (err) {
+                console.error('클립보드 복사 오류:', err);
+                // 커스텀 알림 UI를 사용해야 하지만, 여기서는 임시로 콘솔 메시지로 대체
+            }
+        });
+
+        /**
+         * URL 파라미터를 확인하고 데이터를 복원하여 표시합니다.
+         */
+        function checkAndDisplayData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // 필수 파라미터 확인: a (amount), b (bank), c (account), d (holder)
+            const amount = urlParams.get('a');
+            const bank = urlParams.get('b');
+            const account = urlParams.get('c');
+            const holder = urlParams.get('d');
+
+            if (amount && bank && account && holder) {
+                // 데이터가 있을 경우: 결과 표시 섹션 활성화
+                inputSection.classList.add('hidden');
+                resultSection.classList.remove('hidden');
+
+                document.getElementById('displayAmount').textContent = formatCurrency(parseInt(amount));
+                document.getElementById('displayBank').textContent = decodeURIComponent(bank);
+                document.getElementById('displayAccount').textContent = decodeURIComponent(account);
+                document.getElementById('displayHolder').textContent = decodeURIComponent(holder);
+
+            } else {
+                // 데이터가 없을 경우: 입력 폼 섹션 활성화
+                inputSection.classList.remove('hidden');
+                resultSection.classList.add('hidden');
+            }
+        }
+
+        // 페이지 로드 시 정산 데이터 복원 로직 실행
+        window.onload = checkAndDisplayData;
+    </script>
+</body>
+</html>
