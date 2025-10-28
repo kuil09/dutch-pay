@@ -6,9 +6,10 @@
     <title>정산 링크 생성기</title>
     <!-- OGP 태그 시작 (링크 미리보기용) -->
     <meta property="og:type" content="website">
-    <meta property="og:url" id="ogUrl" content="[OGP URL 기본값]">
-    <meta property="og:title" id="ogTitle" content="[OGP 타이틀 기본값]">
-    <meta property="og:description" id="ogDescription" content="[OGP 설명 기본값]">
+    <!-- URL은 페이지 로드 시 window.location.href로 설정됩니다. -->
+    <meta property="og:url" id="ogUrl" content=""> 
+    <meta property="og:title" id="ogTitle" content="더치페이 정산 링크 생성 및 공유">
+    <meta property="og:description" id="ogDescription" content="복잡한 정산, 이 링크 하나로 끝! 금액과 계좌 정보를 QR 코드로 간편하게 공유하세요.">
     <!-- OGP 태그 종료 -->
 
     <!-- Tailwind CSS CDN 로드 -->
@@ -138,7 +139,7 @@
             <div class="space-y-4 p-6 bg-green-50 rounded-xl border-4 border-green-300 shadow-lg">
                 <div class="text-left">
                     <p class="text-2xl font-bold text-green-700">송금할 금액</p>
-                    <p id="displayAmount" class="text-5xl font-extrabold text-green-900 mt-1">0원</p>
+                    <p id="displayAmount" class="5xl font-extrabold text-green-900 mt-1">0원</p>
                 </div>
                 
                 <div class="border-t border-green-200 pt-4 space-y-2 text-left">
@@ -392,6 +393,9 @@
          * URL 파라미터를 확인하고 데이터를 복원하여 표시합니다.
          */
         function checkAndDisplayData() {
+            // 페이지 로드 시 OGP URL을 현재 URL로 설정
+            ogUrl.setAttribute('content', window.location.href);
+
             const urlParams = new URLSearchParams(window.location.search);
             
             // 필수 파라미터 확인: a (amount), b (bank), c (account), d (holder)
